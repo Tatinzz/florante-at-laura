@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import './styles/animations.css';
+
+/* Add fade-out animation for questions */
+@keyframes fadeOut {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.fade-out-questions {
+  animation-name: fadeOut;
+  animation-duration: 0.2s; /* Very quick fade */
+  animation-delay: 1s; /* Short delay */
+  animation-fill-mode: forwards;
+  animation-timing-function: ease-out;
+}
+
+/* Score display styling */
+.score-centered-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin-top: 0 !important;
+}
+
+/* Pulse glow animation */
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 5px 0 rgba(251, 191, 36, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px 5px rgba(251, 191, 36, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 5px 0 rgba(251, 191, 36, 0.2);
+  }
+}
+
+.pulse-glow {
+  animation: pulseGlow 3s infinite ease-in-out;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #D5A021 #2D3047; /* amber thumb, indigo track */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  background: #2D3047;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #D5A021 60%, #E5B134 100%);
+  border-radius: 8px;
+  border: 2px solid #2D3047;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #E5B134 60%, #D5A021 100%);
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #2D3047;
+  border-radius: 8px;
+}

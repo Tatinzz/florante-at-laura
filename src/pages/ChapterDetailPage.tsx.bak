@@ -1,0 +1,681 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, BookText, Lightbulb, BookOpen, CheckCircle, List, FileText, Home, Check, Maximize, X, Info } from 'lucide-react';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import Header from '../components/Header';
+import QuizCard from '../components/QuizCard';
+import { chapters } from '../data/chapters';
+import { quizzes } from '../data/quizzes';
+import { Chapter, Quiz } from '../types';
+import AnimatedBackground from '../components/AnimatedBackground';
+
+// Temporary content for each section
+const tempBokabularyo = [
+  { word: 'maalab', definition: 'mainit o masidhi', example: 'Maalab na pagmamahal' },
+  { word: 'nagdadalamhati', definition: 'nagluluksa o nalulungkot', example: 'Siya ay nagdadalamhati sa pagkawala ng kanyang mahal sa buhay' },
+  { word: 'higera', definition: 'uri ng puno', example: 'Siya ay nakatali sa puno ng higera' }
+];
+
+const tempNilalaman = [
+  { title: 'Pangunahing Tauhan', content: 'Florante - Ang bayani ng kwento, anak ni Duke Briseo ng Albania' },
+  { title: 'Setting', content: 'Kagubatan ng Albania' },
+  { title: 'Pangyayari', content: 'Natagpuan si Florante na nakatali sa puno ng higera sa loob ng anim na araw, inaatake ng mga leon' }
+];
+
+const tempSimbolismo = [
+  { symbol: 'Kagubatan', meaning: 'Sumisimbolo sa mga pagsubok at kahirapan ng buhay' },
+  { symbol: 'Leon', meaning: 'Kumakatawan sa mga mapanganib na balakid at kaaway' },
+  { symbol: 'Puno ng Higera', meaning: 'Sumasagisag sa kawalang kalayaan at pagkaalipin' }
+];
+
+type TabType = 'buod' | 'quiz' | 'bokabularyo' | 'nilalaman' | 'simbolismo';
+
+const ChapterDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const [chapter, setChapter] = useState<Chapter | null>(null);
+  const [chapterQuizzes, setChapterQuizzes] = useState<Quiz[]>([]);
+  const [prevChapter, setPrevChapter] = useState<Chapter | null>(null);
+  const [nextChapter, setNextChapter] = useState<Chapter | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('buod');
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [showFullImage, setShowFullImage] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(true);
+  const previousTabRef = useRef<TabType>(activeTab);
+
+  // Auto-scroll to top on page load
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
+  // Hide the tooltip after 5 seconds
+  useEffect(() => {
+    if (showTooltip) {
+      const timer = setTimeout(() => {
+        setShowTooltip(false);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showTooltip]);
+
+  useEffect(() => {
+    if (id) {
+      const chapterId = parseInt(id);
+      const current = chapters.find(c => c.id === chapterId) || null;
+      setChapter(current);
+      
+      if (current) {
+        setIsCompleted(current.completed);
+      }
+
+      // Find previous and next chapters
+      const prev = chapters.find(c => c.id === chapterId - 1) || null;
+      const next = chapters.find(c => c.id === chapterId + 1) || null;
+      setPrevChapter(prev);
+      setNextChapter(next);
+
+      // Filter quizzes for this chapter
+      const filtered = quizzes.filter(q => q.chapterId === chapterId);
+      setChapterQuizzes(filtered);
+    }
+  }, [id]);
+
+  const handleMarkAsRead = () => {
+    if (!chapter) return;
+    
+    // In a real implementation, this would update a database or localStorage
+    setIsCompleted(!isCompleted);
+    
+    // This is just for demo purposes - in a real app, you'd persist this state
+    // For now, we're just updating the UI state
+  };
+
+  const getChapterImage = () => {
+    if (chapter?.id === 1) return '/florante-at-laura-images/kabanata1.png';
+    if (chapter?.id === 2) return '/florante-at-laura-images/kabanata2.png';
+    return '/florante-at-laura-images/cover.png';
+  };
+
+  const handleTabChange = (newTab: TabType) => {
+    if (newTab === activeTab) return;
+    previousTabRef.current = activeTab;
+    setActiveTab(newTab);
+  };
+
+  if (!chapter) {
+    return (
+      <div className="min-h-screen bg-indigo-950 text-ivory-100 flex items-center justify-center overflow-hidden">
+        <AnimatedBackground />
+        <div className="text-center relative z-10">
+          <motion.p 
+            className="text-2xl text-amber-400"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            Loading chapter...
+          </motion.p>
+        </div>
+      </div>
+    );
+  }
+
+  const renderTabContent = () => {
+    // Define animation variants for tab content
+    const tabContentVariants = {
+      initial: { 
+        opacity: 0, 
+        y: 20,
+        transition: { duration: 0.2 } 
+      },
+      animate: { 
+        opacity: 1, 
+        y: 0,
+        transition: { 
+          duration: 0.5,
+          ease: [0.22, 1, 0.36, 1]
+        }
+      },
+      exit: { 
+        opacity: 0, 
+        y: -20,
+        transition: { duration: 0.2 } 
+      }
+    };
+    
+    // Define stagger variants for children items
+    const staggerVariants = {
+      initial: { opacity: 0, y: 20 },
+      animate: {
+        opacity: 1,
+        y: 0,
+        transition: {
+          staggerChildren: 0.1
+        }
+      }
+    };
+    
+    const itemVariants = {
+      initial: { opacity: 0, y: 20 },
+      animate: { 
+        opacity: 1, 
+        y: 0,
+        transition: { duration: 0.4 }
+      }
+    };
+
+    return (
+      <div className="bg-indigo-900/30 backdrop-blur-sm p-0 rounded-xl border border-indigo-700/30 mb-6 card-3d relative overflow-hidden">
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={activeTab}
+            variants={tabContentVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="p-6"
+          >
+            {activeTab === 'buod' && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-amber-400 mb-4 font-serif">Buod ng Kabanata</h3>
+                <p className="text-ivory-200">{chapter?.summary}</p>
+                <div className="mt-6 space-y-4 text-ivory-300">
+                  <p>
+                    Sa loob at labas ng bayan kong sawi,<br />
+                    kaliluha'y siyang nangyayaring hari,<br />
+                    kagalinga't bait ay nalulugami,<br />
+                    ininis sa hukay ng dusa't pighati...
+                  </p>
+                  
+                  <p>
+                    Kung sa isa't isa'y nagkakapatayan<br />
+                    dahil sa marami't sarisaring bayan<br />
+                    kalayaan nati'y siyang kinahapuan<br />
+                    kaya ng alipi'y siyang katambayang...
+                  </p>
+                  
+                  <p className="italic text-sm text-center">
+                    (Ang buong teksto ng kabanata ay magiging available sa kompletong implementasyon.)
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {activeTab === 'quiz' && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-amber-400 mb-4 font-serif">Pagsusulit</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {chapterQuizzes.map((quiz, index) => (
+                    <QuizCard key={quiz.id} quiz={quiz} index={index} />
+                  ))}
+                  
+                  {chapterQuizzes.length === 0 && (
+                    <p className="text-ivory-300 text-sm col-span-full">Walang available na pagsusulit para sa kabanatang ito.</p>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {activeTab === 'bokabularyo' && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-amber-400 mb-4 font-serif">Bokabularyo</h3>
+                <motion.div 
+                  className="space-y-4"
+                  variants={staggerVariants}
+                  initial="initial"
+                  animate="animate"
+                >
+                  {tempBokabularyo.map((item, index) => (
+                    <motion.div
+                      key={index}
+                      variants={itemVariants}
+                      className="border-b border-indigo-800/30 pb-4 last:border-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="bg-blue-500/20 p-1.5 rounded-md">
+                          <BookOpen className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <h4 className="font-serif text-lg text-ivory-100">{item.word}</h4>
+                      </div>
+                      <p className="text-ivory-200 pl-8 mt-1">{item.definition}</p>
+                      <p className="text-ivory-300/70 italic pl-8 mt-1 text-sm">Halimbawa: {item.example}</p>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </div>
+            )}
+            
+            {activeTab === 'nilalaman' && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-amber-400 mb-4 font-serif">Nilalaman</h3>
+                <motion.div 
+                  className="space-y-4"
+                  variants={staggerVariants}
+                  initial="initial"
+                  animate="animate"
+                >
+                  {tempNilalaman.map((item, index) => (
+                    <motion.div
+                      key={index}
+                      variants={itemVariants}
+                      className="bg-indigo-800/20 p-4 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="bg-purple-500/20 p-1.5 rounded-md">
+                          <BookText className="w-4 h-4 text-purple-400" />
+                        </div>
+                        <h4 className="font-medium text-ivory-100">{item.title}</h4>
+                      </div>
+                      <p className="text-ivory-200 pl-8">{item.content}</p>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </div>
+            )}
+            
+            {activeTab === 'simbolismo' && (
+              <div className="space-y-4">
+                <h3 className="text-xl text-amber-400 mb-4 font-serif">Simbolismo</h3>
+                <motion.div 
+                  className="space-y-4"
+                  variants={staggerVariants}
+                  initial="initial"
+                  animate="animate"
+                >
+                  {tempSimbolismo.map((item, index) => (
+                    <motion.div
+                      key={index}
+                      variants={itemVariants}
+                      className="flex gap-4 border-l-2 border-emerald-400/30 pl-4"
+                    >
+                      <div className="bg-emerald-500/20 p-2 rounded-full h-fit">
+                        <Lightbulb className="w-4 h-4 text-emerald-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-ivory-100">{item.symbol}</h4>
+                        <p className="text-ivory-200 text-sm mt-1">{item.meaning}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+        
+        {/* Subtle page fold effect */}
+        <div className="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-amber-400/5 to-transparent pointer-events-none"></div>
+        <div className="absolute top-0 right-0 h-full w-[1px] bg-amber-400/10 pointer-events-none"></div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-indigo-950 text-ivory-100 overflow-hidden">
+      <Header />
+      <AnimatedBackground bubbleCount={4} theme="literary" speed={0.7} />
+      
+      {/* Full image modal with Framer Motion */}
+      <AnimatePresence>
+        {showFullImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-indigo-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ 
+                duration: 0.4,
+                ease: [0.22, 1, 0.36, 1]
+              }}
+              className="relative w-full max-w-4xl mx-auto"
+            >
+              <button 
+                onClick={() => setShowFullImage(false)}
+                className="absolute -top-12 right-0 text-ivory-300 hover:text-ivory-100 transition-colors"
+              >
+                <X size={24} />
+              </button>
+              <motion.img 
+                src={getChapterImage()} 
+                alt={`Larawan para sa ${chapter?.title}`}
+                className="w-full h-auto rounded-xl shadow-2xl border border-indigo-700/50 image-shadow"
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.3 }}
+              />
+              <p className="text-center mt-4 text-ivory-300 italic">Larawan para sa {chapter?.title}</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {/* Initial tooltip with Framer Motion */}
+      <AnimatePresence>
+        {showTooltip && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.4 }}
+            className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-amber-400/90 text-indigo-950 px-4 py-2 rounded-lg shadow-lg z-40 flex items-center max-w-[90%] md:max-w-md"
+          >
+            <Info className="w-5 h-5 mr-2 flex-shrink-0" />
+            <span className="text-sm font-medium">I-click ang "Tingnan ang Larawan" para makita ang buong ilustrasyon</span>
+            <motion.button 
+              onClick={() => setShowTooltip(false)}
+              className="ml-3 text-indigo-950/70 hover:text-indigo-950 transition-colors flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <LayoutGroup>
+        <div className="container mx-auto px-4 pt-24 pb-16 relative z-10">
+          {/* Breadcrumbs navigation */}
+          <motion.div 
+            className="mb-6 flex items-center text-ivory-300 text-sm"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Link to="/" className="hover:text-amber-400 transition-colors">
+              <Home className="w-4 h-4" />
+            </Link>
+            <span className="mx-2">•</span>
+            <Link to="/chapters" className="hover:text-amber-400 transition-colors">Mga Kabanata</Link>
+            <span className="mx-2">•</span>
+            <span className="text-amber-400">Kabanata {chapter?.id}</span>
+          </motion.div>
+          
+          {/* Chapter header with landscape image */}
+          <motion.div 
+            className="bg-indigo-900/40 backdrop-blur-md rounded-xl overflow-hidden mb-8 border border-indigo-800/30 shadow-xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ 
+              duration: 0.6,
+              ease: [0.22, 1, 0.36, 1]
+            }}
+            layoutId={`chapter-card-${chapter.id}`}
+          >
+            {/* This is where you would place the landscape image for the chapter */}
+            <motion.div 
+              className="h-48 md:h-64 lg:h-80 bg-gradient-to-r from-indigo-800/30 to-indigo-950/30 relative overflow-hidden"
+              layoutId={`chapter-image-container-${chapter.id}`}
+            >
+              {/* Inner border to highlight image */}
+              <div className="absolute inset-4 border border-amber-400/20 rounded-lg pointer-events-none z-10"></div>
+              
+              {/* Use the right chapter image based on the ID */}
+              <motion.div 
+                className="absolute inset-0 bg-cover bg-center opacity-85 mix-blend-normal enhanced-image"
+                style={{ 
+                  backgroundImage: chapter?.id === 1 
+                    ? 'url("/florante-at-laura-images/kabanata1.png")' 
+                    : chapter?.id === 2
+                    ? 'url("/florante-at-laura-images/kabanata2.png")'
+                    : 'url("/florante-at-laura-images/cover.png")'
+                }}
+                initial={{ scale: 1.1 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.8 }}
+              ></motion.div>
+              
+              <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-indigo-950 to-transparent h-1/4"></div>
+              <div className="absolute top-0 left-0 w-full bg-gradient-to-b from-indigo-950/40 to-transparent h-1/6"></div>
+              
+              {/* View full image button */}
+              <motion.button 
+                onClick={() => setShowFullImage(true)}
+                className="absolute bottom-4 right-4 bg-indigo-900/80 backdrop-blur-sm px-3 py-1.5 rounded-md border border-indigo-700/50 flex items-center text-ivory-100 hover:border-amber-400/30 transition-colors z-20"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <Maximize className="w-4 h-4 mr-1.5" />
+                <span className="text-sm">Tingnan ang Larawan</span>
+              </motion.button>
+              
+              <motion.div 
+                className="absolute top-4 left-4 bg-indigo-900/80 backdrop-blur-sm px-3 py-1.5 rounded-md border border-amber-400/30"
+                layoutId={`chapter-number-${chapter.id}`}
+              >
+                <motion.span 
+                  className="text-amber-400 font-medium"
+                  layoutId={`chapter-number-text-${chapter.id}`}
+                >
+                  Kabanata {chapter.id}
+                </motion.span>
+              </motion.div>
+              
+              {isCompleted && (
+                <motion.div 
+                  className="absolute top-4 right-4 bg-indigo-900/80 backdrop-blur-sm px-3 py-1.5 rounded-md border border-emerald-400/30 flex items-center"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-400 mr-1.5" />
+                  <span className="text-emerald-400 font-medium">Nabasa na</span>
+                </motion.div>
+              )}
+            </motion.div>
+            
+            <div className="p-6 md:p-8">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <motion.div layoutId={`chapter-content-${chapter.id}`}>
+                  <motion.h1 
+                    className="font-serif text-3xl md:text-4xl lg:text-5xl text-amber-400 mb-2"
+                    layoutId={`chapter-title-${chapter.id}`}
+                  >
+                    {chapter?.title}
+                  </motion.h1>
+                  <motion.h2 
+                    className="text-xl text-ivory-200 mb-6"
+                    layoutId={`chapter-subtitle-${chapter.id}`}
+                  >
+                    {chapter?.subtitle}
+                  </motion.h2>
+                  
+                  <motion.div 
+                    className="flex items-center text-ivory-300 space-x-4 text-sm"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <div className="flex items-center">
+                      <FileText className="w-4 h-4 mr-1" />
+                      <span>Francisco Balagtas</span>
+                    </div>
+                    <span>•</span>
+                    <div className="flex items-center">
+                      <List className="w-4 h-4 mr-1" />
+                      <span>Akda Klasiko</span>
+                    </div>
+                  </motion.div>
+                </motion.div>
+                
+                <motion.button 
+                  onClick={handleMarkAsRead}
+                  className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg w-full md:w-auto ${
+                    isCompleted 
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  }`}
+                  whileHover={{ 
+                    backgroundColor: isCompleted 
+                      ? 'rgba(16, 185, 129, 0.25)' 
+                      : 'rgba(245, 158, 11, 0.25)'
+                  }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ 
+                    type: "tween",
+                    duration: 0.3,
+                    delay: 0.5
+                  }}
+                >
+                  <motion.div
+                    initial={false}
+                    animate={{ rotate: isCompleted ? 0 : 360 }}
+                    transition={{ duration: 0.5, ease: "easeInOut" }}
+                  >
+                    <Check className={`w-5 h-5 ${isCompleted ? 'text-emerald-400' : 'text-amber-400'}`} />
+                  </motion.div>
+                  <span>{isCompleted ? 'Nabasa na' : 'Markahan Bilang Nabasa'}</span>
+                </motion.button>
+              </div>
+            </div>
+          </motion.div>
+        
+        {/* Tab navigation - mobile-friendly version */}
+        <div className="mb-6 bg-indigo-900/20 p-1 rounded-lg border border-indigo-800/30 animate-in-up" style={{ animationDelay: '0.3s' }}>
+          {/* Tabs for larger screens with Framer Motion */}
+          <div className="hidden md:flex space-x-2 relative">
+            {[
+              { id: 'buod', label: 'Buod', icon: <FileText className="w-4 h-4 mr-2" /> },
+              { id: 'quiz', label: 'Quiz', icon: <CheckCircle className="w-4 h-4 mr-2" /> },
+              { id: 'bokabularyo', label: 'Bokabularyo', icon: <BookOpen className="w-4 h-4 mr-2" /> },
+              { id: 'nilalaman', label: 'Nilalaman', icon: <BookText className="w-4 h-4 mr-2" /> },
+              { id: 'simbolismo', label: 'Simbolismo', icon: <Lightbulb className="w-4 h-4 mr-2" /> },
+            ].map((tab) => (
+              <motion.button
+                key={tab.id}
+                className={`flex items-center whitespace-nowrap px-4 py-2 rounded-md ${
+                  activeTab === tab.id 
+                    ? 'bg-amber-400/20 text-amber-400 active' 
+                    : 'text-ivory-300 hover:bg-indigo-800/30 hover:text-ivory-100'
+                }`}
+                onClick={() => handleTabChange(tab.id as TabType)}
+                whileHover={{ 
+                  backgroundColor: activeTab === tab.id ? 'rgba(251, 191, 36, 0.2)' : 'rgba(67, 56, 202, 0.2)'
+                }}
+                transition={{ 
+                  duration: 0.2
+                }}
+              >
+                {tab.icon}
+                {tab.label}
+                {activeTab === tab.id && (
+                  <motion.div
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400"
+                    layoutId="tabIndicator"
+                    transition={{ 
+                      type: "spring", 
+                      stiffness: 300, 
+                      damping: 30
+                    }}
+                  />
+                )}
+              </motion.button>
+            ))}
+          </div>
+          
+          {/* Tab grid for mobile view with Framer Motion */}
+          <div className="grid grid-cols-3 gap-1 md:hidden">
+            {[
+              { id: 'buod', label: 'Buod', icon: <FileText className="w-4 h-4" /> },
+              { id: 'quiz', label: 'Quiz', icon: <CheckCircle className="w-4 h-4" /> },
+              { id: 'bokabularyo', label: 'Bokab.', icon: <BookOpen className="w-4 h-4" /> },
+              { id: 'nilalaman', label: 'Nilal.', icon: <BookText className="w-4 h-4" /> },
+              { id: 'simbolismo', label: 'Simbol.', icon: <Lightbulb className="w-4 h-4" /> },
+            ].map((tab) => (
+              <motion.button
+                key={tab.id}
+                className={`flex flex-col items-center justify-center py-2 px-1 rounded-md relative ${
+                  activeTab === tab.id 
+                    ? 'bg-amber-400/20 text-amber-400' 
+                    : 'text-ivory-300 hover:bg-indigo-800/30 hover:text-ivory-100'
+                }`}
+                onClick={() => handleTabChange(tab.id as TabType)}
+                animate={{ 
+                  backgroundColor: activeTab === tab.id ? 'rgba(251, 191, 36, 0.2)' : 'transparent'
+                }}
+                transition={{ duration: 0.2 }}
+              >
+                <motion.div
+                  animate={{ y: activeTab === tab.id ? -2 : 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                >
+                  {tab.icon}
+                </motion.div>
+                <span className="text-xs mt-1 text-center">{tab.label}</span>
+                {activeTab === tab.id && (
+                  <motion.div
+                    className="absolute -bottom-1 inset-x-2 h-0.5 bg-amber-400 rounded-full"
+                    layoutId="mobileTabIndicator"
+                  />
+                )}
+              </motion.button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Tab content with animations */}
+        {renderTabContent()}
+        
+        {/* Chapter navigation with Framer Motion */}
+        <div className="flex justify-between items-center mt-12 border-t border-indigo-800/50 pt-6">
+          {prevChapter ? (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+            >
+              <motion.div
+                whileHover={{ x: -3 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Link 
+                  to={`/chapter/${prevChapter.id}`}
+                  className="flex items-center text-amber-400 hover:text-amber-300 bg-indigo-900/30 backdrop-blur-sm border border-indigo-800/50 hover:border-amber-400/30 rounded-lg px-4 py-2"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  <div>
+                    <span className="block text-xs text-ivory-300">Nakaraang Kabanata</span>
+                    <span>{prevChapter.title}</span>
+                  </div>
+                </Link>
+              </motion.div>
+            </motion.div>
+          ) : (
+            <div></div>
+          )}
+          
+          {nextChapter && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+            >
+              <motion.div
+                whileHover={{ x: 3 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Link 
+                  to={`/chapter/${nextChapter.id}`}
+                  className="flex items-center text-amber-400 hover:text-amber-300 bg-indigo-900/30 backdrop-blur-sm border border-indigo-800/50 hover:border-amber-400/30 rounded-lg px-4 py-2 text-right"
+                >
+                  <div>
+                    <span className="block text-xs text-ivory-300">Susunod na Kabanata</span>
+                    <span>{nextChapter.title}</span>
+                  </div>
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Link>
+              </motion.div>
+            </motion.div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ChapterDetailPage;
